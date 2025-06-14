@@ -90,50 +90,184 @@ const commits = [
   { hash: "eb05919", date: "2025-06-14", author: "stevegwapss", message: "Added is_featured column to post table" },
   { hash: "fffb36c", date: "2025-06-14", author: "OwPor", message: "Refactor: streamline footer and header settings handling, improve default value assignments, and enhance accessibility in home page" }
 ];
-commits.reverse();
 
-function renderTimeline(commits) {
+// Sort in chronological order (oldest first)
+commits.sort((a, b) => new Date(`${a.date} ${a.time}`) - new Date(`${b.date} ${b.time}`));
+
+// Function to animate counter with easing
+function animateCounter(elementId, targetValue, duration = 1500, suffix = '') {
+  const element = document.getElementById(elementId);
+  if (!element) return;
+  
+  const startTime = performance.now();
+  const startValue = 0;
+  
+  function updateCounter(currentTime) {
+      const elapsedTime = currentTime - startTime;
+      const progress = Math.min(elapsedTime / duration, 1);
+      
+      // Ease out animation
+      const easeProgress = 1 - (1 - progress) * (1 - progress);
+      const currentValue = Math.floor(startValue + easeProgress * (targetValue - startValue));
+      
+      element.textContent = currentValue + suffix;
+      
+      if (progress < 1) {
+          requestAnimationFrame(updateCounter);
+      }
+  }
+  
+  setTimeout(() => {
+      requestAnimationFrame(updateCounter);
+  }, 300);
+}
+
+// Function to populate timeline with commits
+function populateTimeline(commits) {
   const timeline = document.getElementById('timeline');
   if (!timeline) return;
+  
+  // Clear any existing content
   timeline.innerHTML = '';
-  // Sort commits from most recent to oldest
-  commits.sort((a, b) => new Date(b.date) - new Date(a.date));
-
-  let lastDate = null;
-
-  for (const c of commits) {
-    const currentDate = c.date;
-    // Add a date header if the date has changed
-    if (currentDate !== lastDate) {
+  
+  // Group commits by date
+  const commitsByDate = {};
+  commits.forEach(commit => {
+      if (!commitsByDate[commit.date]) {
+          commitsByDate[commit.date] = [];
+      }
+      commitsByDate[commit.date].push(commit);
+  });
+  
+  // Sort dates in descending order (newest first)
+  const sortedDates = Object.keys(commitsByDate).sort((a, b) => new Date(b) - new Date(a));
+  
+  // Create timeline entries
+  sortedDates.forEach((date, dateIndex) => {
+      const dateCommits = commitsByDate[date];
+      
+      // Format date for display
+      const displayDate = new Date(date).toLocaleDateString('en-US', {
+          weekday: 'long',
+          month: 'long',
+          day: 'numeric'
+      });
+      
+      // Create date section
+      const dateSection = document.createElement('div');
+      dateSection.className = 'space-y-4';
+      
+      // Date header
       const dateHeader = document.createElement('div');
-      dateHeader.className = 'mb-4 -ml-3';
-      dateHeader.innerHTML = `<span class="bg-slate-200 text-slate-700 text-sm font-semibold px-3 py-1 rounded-full">${new Date(currentDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span>`;
-      timeline.appendChild(dateHeader);
-      lastDate = currentDate;
-    }
+      dateHeader.className = 'flex items-center space-x-3';
+      dateHeader.innerHTML = `
+          <svg class="w-4 h-4 text-red-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+          </svg>
+          <h4 class="text-sm font-semibold text-slate-700 border-b border-slate-200 pb-1">${displayDate}</h4>
+      `;
+      
+      // Commits container
+      const commitsContainer = document.createElement('div');
+      commitsContainer.className = 'ml-1 space-y-1';
+      
+      // Create commit entries
+      dateCommits.forEach((commit, commitIndex) => {
+          const isLast = dateIndex === sortedDates.length - 1 && commitIndex === dateCommits.length - 1;
+          
+          const commitEntry = document.createElement('div');
+          commitEntry.className = 'relative flex items-start group timeline-entry';
+          
+          commitEntry.innerHTML = `
+              <!-- Timeline line -->
+              <div class="absolute left-4 top-8 w-0.5 bg-gradient-to-b from-red-200 to-transparent h-full" 
+                   style="display: ${isLast ? 'none' : 'block'}"></div>
+              
+              <!-- Timeline dot -->
+              <div class="relative z-10 flex items-center justify-center w-8 h-8 bg-white border-2 border-red-200 rounded-full group-hover:border-red-400 transition-colors duration-200">
+                  <svg class="w-3 h-3 text-red-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 12h.007v.008H3.75V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm-.375 5.25h.007v.008H3.75v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+                  </svg>
+              </div>
+              
+              <!-- Content -->
+              <div class="ml-4 flex-1 pb-6">
+                  <div class="bg-white rounded-lg border border-slate-200 p-4 shadow-sm group-hover:shadow-md transition-shadow duration-200">
+                      <div class="flex items-center justify-between mb-2">
+                          <span class="text-xs text-slate-500 font-mono">${commit.time || ''}</span>
+                      </div>
+                      <p class="text-sm text-slate-700 leading-relaxed">${commit.message}</p>
+                      ${commit.author ? `<div class="mt-2 text-xs text-slate-500">By: ${commit.author}</div>` : ''}
+                  </div>
+              </div>
+          `;
+          
+          commitsContainer.appendChild(commitEntry);
+      });
+      
+      dateSection.appendChild(dateHeader);
+      dateSection.appendChild(commitsContainer);
+      timeline.appendChild(dateSection);
+  });
 
-    const item = document.createElement('div');
-    item.className = 'mb-8 ml-8 relative';
-    item.innerHTML = `
-      <div class="absolute w-4 h-4 bg-red-600 rounded-full -left-[38px] top-1.5 border-4 border-slate-100"></div>
-      <div class="bg-white p-4 rounded-lg shadow-sm border border-slate-200 hover:shadow-md transition-shadow">
-        <p class="font-medium text-slate-800 leading-snug">${c.message}</p>
-        <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 mt-2 text-xs text-slate-500">
-            <div class="flex items-center space-x-1" title="Author">
-                <svg class="w-3.5 h-3.5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-5.5-2.5a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0Z" clip-rule="evenodd" /></svg>
-                <span class="font-semibold">${c.author}</span>
-            </div>
-            <div class="flex items-center space-x-1" title="Commit Hash">
-                <svg class="w-3.5 h-3.5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M11.603 3.693a.75.75 0 0 1 .846.846l-.53 2.652A3.5 3.5 0 0 1 9.25 10.5H8.5v-1.75a.75.75 0 0 1 1.5 0V10.5h.75a2 2 0 0 0 1.93-1.498l.53-2.652a2.25 2.25 0 0 0-4.328-1.018l-.986 4.933a.75.75 0 0 1-1.48-.297l.986-4.933A3.75 3.75 0 0 1 11.603 3.693Zm-3.134 10.373a.75.75 0 0 1-.846-.846l.53-2.652A3.5 3.5 0 0 1 10.75 9.5h.75v1.75a.75.75 0 0 1-1.5 0V9.5h-.75a2 2 0 0 0-1.93 1.498l-.53 2.652a2.25 2.25 0 0 0 4.328 1.018l.986-4.933a.75.75 0 0 1 1.48.297l-.986 4.933A3.75 3.75 0 0 1 8.47 14.066Z" clip-rule="evenodd" /></svg>
-                <span class="font-mono">${c.hash}</span>
-            </div>
-        </div>
-      </div>
-    `;
-    timeline.appendChild(item);
+  // Adjust timeline height to match article height
+  adjustTimelineHeight();
+}
+
+// Function to adjust timeline height to match article height
+function adjustTimelineHeight() {
+  const articleElement = document.getElementById('main-article');
+  const timelineContainer = document.getElementById('timeline-container');
+  
+  if (articleElement && timelineContainer) {
+      // Get the height of the article
+      const articleHeight = articleElement.offsetHeight;
+      
+      // Set the timeline container height to match
+      timelineContainer.style.maxHeight = `${articleHeight}px`;
   }
 }
 
+// Function to calculate metrics from commits
+function calculateMetrics(commits) {
+  // Total commits
+  const totalCommits = commits.length;
+
+  // Days active - count unique dates
+  const uniqueDates = new Set(commits.map((c) => c.date));
+  const daysActive = uniqueDates.size;
+
+  // Major features - count commits with feature-related keywords
+  const featureKeywords = ["implement", "create"];
+  const majorFeatures = commits.filter((c) =>
+    featureKeywords.some((keyword) => c.message.toLowerCase().includes(keyword))
+  ).length;
+
+  // Set success rate to 100%
+  const successRate = 100;
+
+  return {
+    totalCommits,
+    daysActive,
+    majorFeatures,
+    successRate,
+  };
+}
+
+// Initialize everything when the DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
-  renderTimeline(commits);
+  // Calculate metrics
+  const metrics = calculateMetrics(commits);
+  
+  // Populate timeline
+  populateTimeline(commits);
+  
+  // Animate metrics with staggered timing
+  animateCounter('total-commits', metrics.totalCommits, 1500);
+  animateCounter('days-active', metrics.daysActive, 1700);
+  animateCounter('major-features', metrics.majorFeatures, 1900);
+  animateCounter('success-rate', metrics.successRate, 2100, '%');
+  
+  // Re-adjust timeline height when window is resized
+  window.addEventListener('resize', adjustTimelineHeight);
 });
